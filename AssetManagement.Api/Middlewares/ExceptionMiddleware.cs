@@ -35,7 +35,8 @@ namespace AssetManagement.Api.Middlewares
                 var response = new
                 {
                     status = 500,
-                    message = "Internal server error. Please contact support."
+                    message = ex.Message,
+                    stackTrace = ex.StackTrace
                 };
 
                 await context.Response.WriteAsync(
