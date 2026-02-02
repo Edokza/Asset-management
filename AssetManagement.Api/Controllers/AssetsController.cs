@@ -25,20 +25,50 @@ namespace AssetManagement.Api.Controllers
 
         // GET: api/assets
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Asset>>> GetAssets()
+        public async Task<ActionResult> GetAssets(int page = 1,int pageSize = 10,string? search = null,int? categoryId = null)
         {
-            var assets = await _context.Assets
+            var query = _context.Assets
                 .Include(a => a.Category)
-                .Select(a => new AssetDto{Id = a.Id,
+                .AsQueryable();
+
+            // Search by name / serial
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(a =>
+                    a.Name.Contains(search) ||
+                    (a.SerialNumber != null && a.SerialNumber.Contains(search)));
+            }
+
+            // Filter by category
+            if (categoryId.HasValue)
+            {
+                query = query.Where(a => a.CategoryId == categoryId.Value);
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var assets = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(a => new AssetDto
+                {
+                    Id = a.Id,
                     Name = a.Name,
                     SerialNumber = a.SerialNumber,
                     CategoryId = a.CategoryId,
-                    CategoryName = a.Category!.Name})
+                    CategoryName = a.Category!.Name
+                })
                 .ToListAsync();
 
-            return Ok(assets);
-
+            return Ok(new
+            {
+                page,
+                pageSize,
+                totalCount,
+                data = assets
+            });
         }
+
 
         // POST: api/assets
         [HttpPost]
